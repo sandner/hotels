@@ -15,38 +15,51 @@
             box-sizing: border-box;
         }
         #appContainer {
-            display: flex;
-            flex-direction: row; /* Side-by-side columns */
+            display: flex; 
+            flex-direction: column; /* Stack header and content */
             width: 100%;
             max-width: 1400px; /* Adjust for desired overall width */
             margin: 0 auto; /* Center the container */
             padding: 20px;
             box-sizing: border-box;
+            min-height: calc(100vh - 40px); /* Try to make app container use most of viewport height */
+        }
+        #headerArea {
+            width: 100%;
+            margin-bottom: 20px; /* Space below header */
+        }
+        #contentArea {
+            display: flex;
+            flex-direction: row;
             gap: 20px; /* Space between left and right columns */
+            flex-grow: 1; /* Allow content area to fill vertical space */
+            width: 100%;
         }
         #leftColumn {
-            flex: 2; /* Left column takes 2/3 of space */
+            flex: 1; /* Chat column - adjust ratio as needed */
             display: flex;
             flex-direction: column;
+            /* max-width: 450px; /* Optional: if you want to cap chat width */
         }
         #rightColumn {
-            flex: 1; /* Right column takes 1/3 of space */
+            flex: 2; /* Criteria/Results column - wider */
             display: flex;
             flex-direction: column;
             gap: 20px; /* Space between panels in the right column */
         }
         .chat-container {
             width: 100%;
-            max-width: 600px;
+            /* max-width: 600px; Removed, now uses column width */
             background-color: #fff;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             border-radius: 8px;
             display: flex;
             flex-direction: column;
             /* Adjust height to fill available space in the column, considering title */
-            height: calc(100vh - 120px); /* Approximate: 100vh - appContainer padding - title margin/height */
-            min-height: 500px; /* Ensure a reasonable minimum chat height */
-            max-width: none; /* Allow it to fill the column width */
+            /* height: calc(100vh - 120px); Replaced with max-height for "completely visible" */
+            /* min-height: 500px; /* Ensure a reasonable minimum chat height */
+            max-height: 70vh; /* Adjust as needed, e.g., 600px or 650px */
+            /* max-width: none; /* Allow it to fill the column width - this is default for width:100% */
         }
         /* Style for the new main title */
         #mainTitle {
@@ -54,6 +67,14 @@
             color: #333;
             margin-bottom: 20px;
             font-weight: bold;
+        }
+        /* Styles for the API toggle switch */
+        .api-toggle-container {
+            margin-bottom: 15px; /* Space below the toggle */
+            font-size: 0.9em;
+        }
+        .api-toggle-container label {
+            margin-left: 5px;
         }
         #chatLog {
             flex-grow: 1;
@@ -240,25 +261,33 @@
 <body>
 
     <div id="appContainer">
-        <div id="leftColumn">
+        <div id="headerArea">
             <h1 id="mainTitle">Hotel AI Finder</h1>
-            <div class="chat-container">
-                <!-- The h1 "Chat Service" is removed from here -->
-                <div id="chatLog"></div>
-                <div class="input-area">
-                    <input type="text" id="messageInput" placeholder="Type your message here...">
-                    <button id="sendButton">Send</button>
-                </div>
+            <div class="api-toggle-container">
+                <input type="checkbox" id="apiToggle">
+                <label for="apiToggle">Use Test API Endpoint</label>
             </div>
         </div>
-        <div id="rightColumn">
-            <div id="criteriaDisplayArea" class="info-panel">
-                <h2>Current Search Criteria</h2>
-                <!-- Criteria will be injected here by JavaScript -->
+        <div id="contentArea">
+            <div id="leftColumn">
+                <div class="chat-container">
+                    <!-- The h1 "Chat Service" is removed from here -->
+                    <div id="chatLog"></div>
+                    <div class="input-area">
+                        <input type="text" id="messageInput" placeholder="Type your message here...">
+                        <button id="sendButton">Send</button>
+                    </div>
+                </div>
             </div>
-            <div id="hotelsDisplayArea" class="info-panel">
-                <h2>Suggested Hotels</h2>
-                <!-- Suggested hotels will be injected here by JavaScript -->
+            <div id="rightColumn">
+                <div id="criteriaDisplayArea" class="info-panel">
+                    <h2>Current Search Criteria</h2>
+                    <!-- Criteria will be injected here by JavaScript -->
+                </div>
+                <div id="hotelsDisplayArea" class="info-panel">
+                    <h2>Suggested Hotels</h2>
+                    <!-- Suggested hotels will be injected here by JavaScript -->
+                </div>
             </div>
         </div>
     </div>
@@ -272,10 +301,11 @@
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
         const detailedLog = document.getElementById('detailedLog');
-        //const apiUrl = 'https://uweuweuwe.app.n8n.cloud/webhook-test/0b310ac9-05d6-4569-97c0-8ba2b590d8c5';
         const criteriaDisplayArea = document.getElementById('criteriaDisplayArea');
         const hotelsDisplayArea = document.getElementById('hotelsDisplayArea');
-        const apiUrl = 'https://uweuweuwe.app.n8n.cloud/webhook/0b310ac9-05d6-4569-97c0-8ba2b590d8c5';
+        const apiToggle = document.getElementById('apiToggle');
+        const PROD_API_URL = 'https://uweuweuwe.app.n8n.cloud/webhook/0b310ac9-05d6-4569-97c0-8ba2b590d8c5';
+        const TEST_API_URL = 'https://uweuweuwe.app.n8n.cloud/webhook-test/0b310ac9-05d6-4569-97c0-8ba2b590d8c5';
         let sessionId = '';
 
         function generateSessionId() {
@@ -489,12 +519,14 @@
             appendToDetailedLog(`Send button disabled. Preparing to send message with Session ID: ${sessionId}`);
 
             try {
+                const currentApiUrl = apiToggle.checked ? TEST_API_URL : PROD_API_URL;
+                appendToDetailedLog(`Using API URL: ${currentApiUrl}`);
                 // Construct URL with query parameters for GET request
                 const params = new URLSearchParams({
                     message: messageText,
                     sessionId: sessionId
                 });
-                const urlWithParams = `${apiUrl}?${params.toString()}`;
+                const urlWithParams = `${currentApiUrl}?${params.toString()}`;
                 appendToDetailedLog(`Sending GET request to: ${urlWithParams}`);
 
                 const response = await fetch(urlWithParams, {
@@ -557,7 +589,8 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             sessionId = generateSessionId();
-            appendToDetailedLog(`Chat initialized. Session ID: ${sessionId}`);
+            const initialApiUrl = apiToggle.checked ? TEST_API_URL : PROD_API_URL;
+            appendToDetailedLog(`Chat initialized. Session ID: ${sessionId}. Default API: ${initialApiUrl}`);
             messageInput.focus(); // Initial focus on the input field
         });
     </script>
